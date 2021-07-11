@@ -6,10 +6,21 @@ import React, { useEffect } from 'react';
 const PADDLE_WIDTH = 15;
 const PADDLE_HEIGHT = 100;
 
+interface PongProps {
+  onPlayerScore: (score: number) => void;
+  onAIScore: (score: number) => void;
+  playerScore: number;
+  aiScore: number;
+}
+
 type GameState = {
   input: {
     upArrowPressed: boolean;
     downArrowPressed: boolean;
+  },
+  events: {
+    onPlayerScore: (score: number) => void;
+    onAIScore: (score: number) => void;
   },
   net: {
     x: number,
@@ -89,13 +100,13 @@ const keyUpHandler = (event: any, gameState: GameState) => {
   }
 }
 
-const resetGame = (canvas: HTMLCanvasElement, gameState: GameState) => {
+const serveOnScore = (canvas: HTMLCanvasElement, gameState: GameState) => {
   gameState.ball.speed = 7;
+  gameState.ball.yVelocity = -Math.sign(gameState.ball.yVelocity) * 5;
+  gameState.ball.xVelocity = -Math.sign(gameState.ball.xVelocity) * 5;
+
   gameState.ball.x = canvas.width / 2;
   gameState.ball.y = canvas.height / 2;
-
-  gameState.ball.xVelocity = -Math.sign(gameState.ball.xVelocity) * 7;
-  gameState.ball.yVelocity = -Math.sign(gameState.ball.yVelocity) * 7;
 };
 
 const renderPongBoard = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, gameState: GameState) => {  
@@ -150,12 +161,16 @@ const updatePongBoard = (canvas: HTMLCanvasElement, gameState: GameState) => {
   // Check for collision with the left or right of the canvas
   if (ball.x <= 0) {
     // ball.xVelocity *= -1;
-    console.log('Ball hit left wall');
-    resetGame(canvas, gameState);
+    // console.log('Ball hit left wall');
+    ++ai.score;
+    gameState.events.onAIScore(ai.score);
+    serveOnScore(canvas, gameState);
   } else if (ball.x + ball.radius >= canvas.width) {
     // ball.xVelocity *= -1;
-    console.log('Ball hit right wall');
-    resetGame(canvas, gameState);
+    // console.log('Ball hit right wall');
+    ++player.score;
+    gameState.events.onPlayerScore(player.score);
+    serveOnScore(canvas, gameState);
   }
 
   // Check for collision with a player
@@ -177,19 +192,20 @@ const updatePongBoard = (canvas: HTMLCanvasElement, gameState: GameState) => {
     ball.yVelocity = ball.speed * Math.sin(angle);
 
     // Increase ball speed for each hit
-    ball.speed += 0.5;
+    ball.speed += 0.25;
   }
 
   return gameState;
 };
 
 const gameLoop = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, gameState: GameState) => {
+  // TODO: Add pause state?
   updatePongBoard(canvas, gameState);
   renderPongBoard(ctx, canvas, gameState);
   window.requestAnimationFrame(() => gameLoop(ctx, canvas, gameState));
 };
 
-const Canvas = () => {
+const Canvas = (props: PongProps) => {
   useEffect(() => {
     // Get the canvas element
     const canvas = getCanvas();
@@ -234,6 +250,10 @@ const Canvas = () => {
         upArrowPressed: false,
         downArrowPressed: false,
       },
+      events: {
+        onPlayerScore: props.onPlayerScore,
+        onAIScore: props.onAIScore,
+      },
     };
 
     window.addEventListener('keydown', (event) => keyDownHandler(event, gameState), false);
@@ -251,15 +271,16 @@ const Canvas = () => {
     <canvas id="canvas"
       width="1000px"
       height="720px"
-        style={{
-          width: '50vw',
-          height: '50vh',
-          maxWidth: '1000px',
-          maxHeight: '720px',
-          border: '2px solid white',
-          borderRadius: '5px',
-        }}>
-       </canvas>
+      style={{
+        width: '50vw',
+        height: '50vh',
+        maxWidth: '1000px',
+        maxHeight: '720px',
+        border: '2px solid white',
+        borderRadius: '5px',
+      }}
+    >
+    </canvas>
   );
 };
 
