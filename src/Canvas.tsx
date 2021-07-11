@@ -94,8 +94,8 @@ const resetGame = (canvas: HTMLCanvasElement, gameState: GameState) => {
   gameState.ball.x = canvas.width / 2;
   gameState.ball.y = canvas.height / 2;
 
-  gameState.ball.xVelocity = -gameState.ball.xVelocity;
-  gameState.ball.yVelocity = -gameState.ball.yVelocity;
+  gameState.ball.xVelocity = -Math.sign(gameState.ball.xVelocity) * 7;
+  gameState.ball.yVelocity = -Math.sign(gameState.ball.yVelocity) * 7;
 };
 
 const renderPongBoard = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, gameState: GameState) => {  
