@@ -1,6 +1,7 @@
 import React from 'react';
 import './App.css';
 import PongGame from './Canvas';
+import GeneticNeuralNetwork from './lib/GeneticNeuralNetwork';
 import NetworkGraph from './NetworkGraph';
 
 const useScore = (initialScore: number) => {
@@ -52,6 +53,9 @@ const App = () => {
   const playerScore = useScore(0);
   const aiScore = useScore(0);
   const outputSignal = useOutputSignal();
+  const [brain, setBrain] = React.useState(null);
+
+  brain && console.log(brain?.id);
 
   return (
     <div
@@ -74,20 +78,33 @@ const App = () => {
         />
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', width: '50vw' }}>
-        <h1 style={{ color: 'white', marginRight: '10px' }}>Player: {playerScore.score}</h1>
-        <h1 style={{ color: 'white' }}>AI: {aiScore.score}</h1>
+        <h1 style={{ color: 'white', marginRight: '10px' }}>Fitness: {playerScore.score}</h1>
+        <h1 style={{ color: 'white' }}>Generations: {aiScore.score}</h1>
       </div>
        <PongGame
         playerScore={playerScore.score}
         aiScore={aiScore.score}
         onPlayerScore={playerScore.setScore} 
-        onAIScore={aiScore.setScore}
+        onAIScore={(score) => {
+          // if (brain) {
+          //   const nextBrain = playerScore.score <= 0 ? new GeneticNeuralNetwork(6, 8, 2) : brain.mutate(0.1);
+          //   setBrain(nextBrain);
+          //   generations++;
+          // } else {
+          //   generations++;
+          // }
+          aiScore.setScore(score);
+          playerScore.reset();
+        }}
         onMoveUp={() => outputSignal.setIsMovingUp(true)}
         onMoveDown={() => outputSignal.setIsMovingDown(true)}
-        onStop={() => outputSignal.setIsStopped(true)}
+        // onMoveUp={() => {}}
+        // onMoveDown={() => {}}
+        brain={brain}
+        setBrain={setBrain}
       />
     </div>
   )
 }
 
-export default App;
+export default React.memo(App);

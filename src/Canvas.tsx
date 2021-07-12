@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import * as tf from '@tensorflow/tfjs';
 import GeneticNeuralNetwork from './lib/GeneticNeuralNetwork';
 
 // Loosely based on the following implementation:
@@ -52,6 +53,9 @@ type GameState = {
     height: number,
     color: string,
     score: number,
+    ballsHit: number,
+    brain: GeneticNeuralNetwork,
+    distBetweenPlayerAndBallOnLastMiss: number,
   },
   ai: {
     x: number,
@@ -82,32 +86,13 @@ const isCollision = (ball: any, player: any) => {
 
   return ball.left <= player.right && ball.right >= player.left && ball.top <= player.bottom && ball.bottom >= player.top;
 };
-  
-// Activated when we press down a key
-// const keyDownHandler = (event: any, gameState: GameState) => {
-//   switch (event.keyCode) {
-//     case 38:
-//       gameState.input.upArrowPressed = true;
-//       break;
-//     case 40:
-//       gameState.input.downArrowPressed = true;
-//       break;
-//   }
-// }
-
-// Activated when we release the key
-// const keyUpHandler = (event: any, gameState: GameState) => {
-//   switch (event.keyCode) {
-//     case 38:
-//       gameState.input.upArrowPressed = false;
-//       break;
-//     case 40:
-//       gameState.input.downArrowPressed = false;
-//       break;
-//   }
-// }
 
 const serveOnScore = (canvas: HTMLCanvasElement, gameState: GameState) => {
+  const fitness = gameState.player.brain.calculateFitness(gameState.player.ballsHit, gameState.player.score, gameState.player.distBetweenPlayerAndBallOnLastMiss);
+  console.log({fitness});
+  gameState.player.brain.mutate(fitness <= 1 ? 1 : Math.max(0.00000001, (0.1 / (10 / fitness))));
+  gameState.player.score = 0;
+  gameState.player.ballsHit = 0;
   gameState.ball.speed = 7;
   gameState.ball.yVelocity = -Math.sign(gameState.ball.yVelocity) * 5;
   gameState.ball.xVelocity = -Math.sign(gameState.ball.xVelocity) * 5;
@@ -148,9 +133,6 @@ const updatePongBoard = (canvas: HTMLCanvasElement, gameState: GameState) => {
   ball.x += ball.xVelocity;
   ball.y += ball.yVelocity;
 
-  // Give the player a brain
-  const brain = new GeneticNeuralNetwork(6, 8, 3);
-
   // Feed the brain with inputs
   const inputs = [
     // Paddle's y position
@@ -167,29 +149,20 @@ const updatePongBoard = (canvas: HTMLCanvasElement, gameState: GameState) => {
     Math.abs(ball.x - player.x),
   ];
 
-  const [moveUp, moveDown, stop] = brain.predict(inputs);
+  const [moveUp, moveDown, stop] = player.brain.predict(inputs);
 
   // If the brain returned a direction, move the paddle
   if (moveUp > 0.5 && player.y > 0) {
     player.y -= 8;
-    gameState.events.onMoveUp();
-  } else if (moveDown > 0.5 && player.y < canvas.height - player.height) {
+    gameState.events?.onMoveUp();
+  } 
+  else if (moveDown > 0.5 && player.y < canvas.height - player.height) {
     player.y += 8;
-    gameState.events.onMoveDown();
-  } else if (stop > 0.5) {
-    player.y += 0;
-    gameState.events.onStop();
+    gameState.events?.onMoveDown();
   }
 
-  // // Move the player paddle
-  // if (input.upArrowPressed && player.y > 0) {
-  //   player.y -= 8;
-  // } else if (input.downArrowPressed && (player.y < canvas.height - player.height)) {
-  //   player.y += 8;
-  // }
-
-  // Simple AI movement
-  ai.y += ((ball.y - (ai.y + ai.height / 2))) * 0.95;
+  // Near perfect AI movement
+  ai.y += ((ball.y - (ai.y + ai.height / 2))) * 0.9;
 
   const closestPaddle = ball.x < canvas.width / 2 ? player : ai;
 
@@ -204,19 +177,24 @@ const updatePongBoard = (canvas: HTMLCanvasElement, gameState: GameState) => {
     // console.log('Ball hit left wall');
     ++ai.score;
     gameState.events.onAIScore(ai.score);
-    brain.dispose();
+    // player.brain.dispose();
+    player.distBetweenPlayerAndBallOnLastMiss = Math.abs(ball.y - (player.y + player.height / 2));
     serveOnScore(canvas, gameState);
   } else if (ball.x + ball.radius >= canvas.width) {
     // ball.xVelocity *= -1;
     // console.log('Ball hit right wall');
     ++player.score;
-    gameState.events.onPlayerScore(player.score);
-    brain.dispose();
+    gameState.events.onPlayerScore(player.score * 2);
+    // player.brain.dispose();
     serveOnScore(canvas, gameState);
   }
 
   // Check for collision with a player
   if (isCollision(gameState.ball, closestPaddle)) {
+    if (closestPaddle === player) {
+      ++player.ballsHit;
+      gameState.events.onPlayerScore(++player.score);
+    }
     let angle = 0;
 
     // If ball hit the top of paddle
@@ -235,13 +213,17 @@ const updatePongBoard = (canvas: HTMLCanvasElement, gameState: GameState) => {
 
     // Increase ball speed for each hit
     ball.speed += 0.25;
+
+    // Increment the number of ballsHit for the player
+    if (closestPaddle === player) {
+      ++player.ballsHit;
+    }
   }
 
   return gameState;
 };
 
 const gameLoop = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, gameState: GameState) => {
-  // TODO: Add pause state?
   updatePongBoard(canvas, gameState);
   renderPongBoard(ctx, canvas, gameState);
   window.requestAnimationFrame(() => gameLoop(ctx, canvas, gameState));
@@ -254,6 +236,16 @@ const Canvas = (props: PongProps) => {
     if (!canvas) return;
     // Get the context for the canvas
     const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+
+    let brain = null;
+    // If we already have a brain, this brain has failed us, lets get a new one
+    if (props.brain) {
+      brain = props.brain;
+    } else {
+      brain = new GeneticNeuralNetwork(6, 8, 2);
+      props.setBrain(brain);
+    }
+
     // Initialize the game state
     const gameState = {
       net: {
@@ -279,6 +271,8 @@ const Canvas = (props: PongProps) => {
         height: PADDLE_HEIGHT,
         color: 'white',
         score: 0,
+        brain,
+        ballsHit: 0,
       },
       ai: {
         x: canvas.width - (PADDLE_WIDTH + 10),
@@ -301,15 +295,12 @@ const Canvas = (props: PongProps) => {
       },
     };
 
-    // window.addEventListener('keydown', (event) => keyDownHandler(event, gameState), false);
-    // window.addEventListener('keyup', (event) => keyUpHandler(event, gameState), false);
-
     window.requestAnimationFrame(() => gameLoop(ctx, canvas, gameState));
 
-    // return () => {
-    //   window.removeEventListener('keydown', (event) => keyDownHandler(event, gameState), false);
-    //   window.removeEventListener('keyup', (event) => keyUpHandler(event, gameState), false);
-    // }
+    return () => {
+      tf.disposeVariables();
+    };
+
   }, []);
 
   return (

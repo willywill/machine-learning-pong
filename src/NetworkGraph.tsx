@@ -80,13 +80,12 @@ const NetworkGraph = (props: NetworkProps) => {
         ctx.fillStyle = layer.label === 'Output' && getIsSignalActive(props.outputSignal, node) ? 'limegreen' : 'white';
         ctx.fill();
         // If we aren't the last layer, draw a line to the next layer
-        const centerOffsetNext = (canvas.height / (1.0 * props.layers[i].nodes) * 0.0);
         if (i !== props.layers.length - 1) {
           range(props.layers[i + 1].nodes).forEach((nextNode, idx) => {
             ctx.beginPath();
             ctx.moveTo(x, y);
             const nextX = (i + 1) * 200 + padding;
-            const nextY = nextNode * 45 + padding + (i === 1 ? 80 : 0);
+            const nextY = nextNode * 45 + padding + (i === 1 ? 80 : 0); // TODO: Fix this specific hacky offset
             ctx.lineTo(nextX, nextY);
             ctx.strokeStyle = 'white';
             ctx.stroke();

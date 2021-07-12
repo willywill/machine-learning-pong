@@ -1,6 +1,7 @@
 import * as tf from '@tensorflow/tfjs';
 
 class GeneticNeuralNetwork {
+  public id: number;
   model: tf.LayersModel;
   inputNodes: number;
   hiddenNodes: number;
@@ -12,11 +13,13 @@ class GeneticNeuralNetwork {
       this.inputNodes = b;
       this.hiddenNodes = c;
       this.outputNodes = d;
+      this.id = Math.round(Math.random() * 100000);
     } else {
       this.inputNodes = b;
       this.hiddenNodes = c;
       this.outputNodes = d;
       this.model = this.createModel();
+      this.id = Math.round(Math.random() * 100000);
     }
   }
 
@@ -40,7 +43,14 @@ class GeneticNeuralNetwork {
   }
 
   mutate(rate: number) {
+    // console.log(`Mutation rate: ${rate}`);
     tf.tidy(() => {
+      // If the mutation rate >= 1 then we just set the model as a brand new model.
+      if (rate >= 1) {
+        this.model = this.createModel();
+        return;
+      }
+
       const weights = this.model.getWeights();
       const mutatedWeights = [];
       for (let i = 0; i < weights.length; i++) {
@@ -57,6 +67,8 @@ class GeneticNeuralNetwork {
         mutatedWeights[i] = newTensor;
       }
       this.model.setWeights(mutatedWeights);
+      // Give this brain a new id
+      this.id = Math.round(Math.random() * 100000);
     });
   }
 
@@ -70,7 +82,6 @@ class GeneticNeuralNetwork {
       const ys = this.model.predict(xs);
       // @ts-ignore
       const outputs = ys.dataSync();
-      // console.log(outputs);
       return outputs;
     });
   }
@@ -88,8 +99,31 @@ class GeneticNeuralNetwork {
       activation: 'softmax'
     });
     model.add(output);
+    this.id = Math.round(Math.random() * 100000);
     return model;
   }
+
+  inspectMemory() {
+    return tf.memory();
+  }
+
+  extractWeights() {
+    return tf.tidy(() => {
+      const weights = this.model.getWeights();
+      const weightCopies = [];
+      for (let i = 0; i < weights.length; i++) {
+        weightCopies[i] = weights[i].clone();
+      }
+      return weightCopies;
+    });
+  }
+
+  calculateFitness(ballsHit: number, score: number, dist: number) {
+    // If we scored a point, we count this as a big bonus!
+    // For each ball hit, we get an additional point.
+    return Math.pow(score, 2) + ballsHit + (dist <= 305 ? 1.25 : 0);
+  }
+
 }
 
 export default GeneticNeuralNetwork;
