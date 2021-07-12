@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import GeneticNeuralNetwork from './lib/GeneticNeuralNetwork';
 
 // Loosely based on the following implementation:
 // https://thecodingpie.com/post/learn-to-code-ping-pong-game-using-javascript-and-html5
@@ -9,6 +10,9 @@ const PADDLE_HEIGHT = 100;
 interface PongProps {
   onPlayerScore: (score: number) => void;
   onAIScore: (score: number) => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onStop: () => void;
   playerScore: number;
   aiScore: number;
 }
@@ -21,6 +25,9 @@ type GameState = {
   events: {
     onPlayerScore: (score: number) => void;
     onAIScore: (score: number) => void;
+    onMoveUp: () => void;
+    onMoveDown: () => void;
+    onStop: () => void;
   },
   net: {
     x: number,
@@ -77,28 +84,28 @@ const isCollision = (ball: any, player: any) => {
 };
   
 // Activated when we press down a key
-const keyDownHandler = (event: any, gameState: GameState) => {
-  switch (event.keyCode) {
-    case 38:
-      gameState.input.upArrowPressed = true;
-      break;
-    case 40:
-      gameState.input.downArrowPressed = true;
-      break;
-  }
-}
+// const keyDownHandler = (event: any, gameState: GameState) => {
+//   switch (event.keyCode) {
+//     case 38:
+//       gameState.input.upArrowPressed = true;
+//       break;
+//     case 40:
+//       gameState.input.downArrowPressed = true;
+//       break;
+//   }
+// }
 
 // Activated when we release the key
-const keyUpHandler = (event: any, gameState: GameState) => {
-  switch (event.keyCode) {
-    case 38:
-      gameState.input.upArrowPressed = false;
-      break;
-    case 40:
-      gameState.input.downArrowPressed = false;
-      break;
-  }
-}
+// const keyUpHandler = (event: any, gameState: GameState) => {
+//   switch (event.keyCode) {
+//     case 38:
+//       gameState.input.upArrowPressed = false;
+//       break;
+//     case 40:
+//       gameState.input.downArrowPressed = false;
+//       break;
+//   }
+// }
 
 const serveOnScore = (canvas: HTMLCanvasElement, gameState: GameState) => {
   gameState.ball.speed = 7;
@@ -141,12 +148,45 @@ const updatePongBoard = (canvas: HTMLCanvasElement, gameState: GameState) => {
   ball.x += ball.xVelocity;
   ball.y += ball.yVelocity;
 
-  // Move the player paddle
-  if (input.upArrowPressed && player.y > 0) {
+  // Give the player a brain
+  const brain = new GeneticNeuralNetwork(6, 8, 3);
+
+  // Feed the brain with inputs
+  const inputs = [
+    // Paddle's y position
+    player.y,
+    // Ball's x position
+    ball.x,
+    // Ball's y position
+    ball.y,
+    // Ball's x velocity
+    ball.xVelocity,
+    // Ball's y velocity
+    ball.yVelocity,
+    // Distance between ball and player
+    Math.abs(ball.x - player.x),
+  ];
+
+  const [moveUp, moveDown, stop] = brain.predict(inputs);
+
+  // If the brain returned a direction, move the paddle
+  if (moveUp > 0.5 && player.y > 0) {
     player.y -= 8;
-  } else if (input.downArrowPressed && (player.y < canvas.height - player.height)) {
+    gameState.events.onMoveUp();
+  } else if (moveDown > 0.5 && player.y < canvas.height - player.height) {
     player.y += 8;
+    gameState.events.onMoveDown();
+  } else if (stop > 0.5) {
+    player.y += 0;
+    gameState.events.onStop();
   }
+
+  // // Move the player paddle
+  // if (input.upArrowPressed && player.y > 0) {
+  //   player.y -= 8;
+  // } else if (input.downArrowPressed && (player.y < canvas.height - player.height)) {
+  //   player.y += 8;
+  // }
 
   // Simple AI movement
   ai.y += ((ball.y - (ai.y + ai.height / 2))) * 0.95;
@@ -164,12 +204,14 @@ const updatePongBoard = (canvas: HTMLCanvasElement, gameState: GameState) => {
     // console.log('Ball hit left wall');
     ++ai.score;
     gameState.events.onAIScore(ai.score);
+    brain.dispose();
     serveOnScore(canvas, gameState);
   } else if (ball.x + ball.radius >= canvas.width) {
     // ball.xVelocity *= -1;
     // console.log('Ball hit right wall');
     ++player.score;
     gameState.events.onPlayerScore(player.score);
+    brain.dispose();
     serveOnScore(canvas, gameState);
   }
 
@@ -253,18 +295,21 @@ const Canvas = (props: PongProps) => {
       events: {
         onPlayerScore: props.onPlayerScore,
         onAIScore: props.onAIScore,
+        onMoveUp: props.onMoveUp,
+        onMoveDown: props.onMoveDown,
+        onStop: props.onStop,
       },
     };
 
-    window.addEventListener('keydown', (event) => keyDownHandler(event, gameState), false);
-    window.addEventListener('keyup', (event) => keyUpHandler(event, gameState), false);
+    // window.addEventListener('keydown', (event) => keyDownHandler(event, gameState), false);
+    // window.addEventListener('keyup', (event) => keyUpHandler(event, gameState), false);
 
     window.requestAnimationFrame(() => gameLoop(ctx, canvas, gameState));
 
-    return () => {
-      window.removeEventListener('keydown', (event) => keyDownHandler(event, gameState), false);
-      window.removeEventListener('keyup', (event) => keyUpHandler(event, gameState), false);
-    }
+    // return () => {
+    //   window.removeEventListener('keydown', (event) => keyDownHandler(event, gameState), false);
+    //   window.removeEventListener('keyup', (event) => keyUpHandler(event, gameState), false);
+    // }
   }, []);
 
   return (
