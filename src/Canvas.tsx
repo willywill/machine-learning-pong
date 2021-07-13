@@ -293,7 +293,7 @@ const updatePongBoard = (canvas: HTMLCanvasElement, gameState: GameState) => {
       serveOnScore(canvas, gameState, player);
     } else if (ball.x + ball.radius >= canvas.width) {
       // ball.xVelocity *= -1;
-      console.log('Ball hit right wall');
+      // console.log('Ball hit right wall');
       ++player.score;
       gameState.events.onPlayerScore(player.score);
       // player.brain.dispose();
