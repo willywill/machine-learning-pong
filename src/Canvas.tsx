@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useEffect } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import GeneticNeuralNetwork from './lib/GeneticNeuralNetwork';

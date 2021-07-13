@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as tf from '@tensorflow/tfjs';
 
 const randomGaussian = () => {
