@@ -111,7 +111,7 @@ class GeneticNeuralNetwork {
   }
 
   loadModel() {
-    return tf.loadLayersModel('/model.json')
+    return tf.loadLayersModel('/my-model.json')
     .then((model) => {
       return new GeneticNeuralNetwork(
         this.inputNodes,
