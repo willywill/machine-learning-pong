@@ -1,5 +1,11 @@
 import * as tf from '@tensorflow/tfjs';
 
+const randomGaussian = () => {
+  var u = 0, v = 0;
+  while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
+  while(v === 0) v = Math.random();
+  return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+}
 class GeneticNeuralNetwork {
   public id: number;
   model: tf.LayersModel;
@@ -8,7 +14,7 @@ class GeneticNeuralNetwork {
   outputNodes: number;
 
   constructor(b: number, c: number, d: number, a?: any) {
-    if (a instanceof tf.Sequential) {
+    if (a instanceof tf.Sequential || a instanceof tf.LayersModel) {
       this.model = a;
       this.inputNodes = b;
       this.hiddenNodes = c;
@@ -60,7 +66,7 @@ class GeneticNeuralNetwork {
         for (let j = 0; j < values.length; j++) {
           if (Math.random() < rate) {
             let w = values[j];
-            values[j] = w + Math.random();
+            values[j] = w + randomGaussian();
           }
         }
         let newTensor = tf.tensor(values, shape);
@@ -103,6 +109,18 @@ class GeneticNeuralNetwork {
     return model;
   }
 
+  loadModel() {
+    return tf.loadLayersModel('/model.json')
+    .then((model) => {
+      return new GeneticNeuralNetwork(
+        this.inputNodes,
+        this.hiddenNodes,
+        this.outputNodes,
+        model,
+      );
+    });
+  }
+
   inspectMemory() {
     return tf.memory();
   }
@@ -121,7 +139,7 @@ class GeneticNeuralNetwork {
   calculateFitness(ballsHit: number, score: number, dist: number) {
     // If we scored a point, we count this as a big bonus!
     // For each ball hit, we get an additional point.
-    return Math.pow(score, 2) + ballsHit + (dist <= 305 ? 1.25 : 0);
+    return Math.pow(score, 2) + ballsHit + (1.0 / dist);
   }
 
 }

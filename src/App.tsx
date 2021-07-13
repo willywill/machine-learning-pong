@@ -50,12 +50,13 @@ const useOutputSignal = () => {
 };
 
 const App = () => {
-  const playerScore = useScore(0);
-  const aiScore = useScore(0);
+  // const playerScore = useScore(0);
+  const { score: generations, setScore: setGeneration } = useScore(0);
+  const { score, setScore } = useScore(0);
   const outputSignal = useOutputSignal();
-  const [brain, setBrain] = React.useState(null);
+  // const [brain, setBrain] = React.useState(null);
 
-  brain && console.log(brain?.id);
+  // brain && console.log(brain?.inspectMemory());
 
   return (
     <div
@@ -78,31 +79,17 @@ const App = () => {
         />
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', width: '50vw' }}>
-        <h1 style={{ color: 'white', marginRight: '10px' }}>Fitness: {playerScore.score}</h1>
-        <h1 style={{ color: 'white' }}>Generations: {aiScore.score}</h1>
+        {/* <h1 style={{ color: 'white', marginRight: '10px' }}>Max Fitness: {playerScore.score}</h1> */}
+        {/* <h1 style={{ color: 'white' }}>Generations: {generations}</h1> */}
+        <h1 style={{ color: 'white' }}>AI Score: {score}</h1>
+        <h1 style={{ color: 'white' }}>Player Score: {generations}</h1>
       </div>
-       <PongGame
-        playerScore={playerScore.score}
-        aiScore={aiScore.score}
-        onPlayerScore={playerScore.setScore} 
-        onAIScore={(score) => {
-          // if (brain) {
-          //   const nextBrain = playerScore.score <= 0 ? new GeneticNeuralNetwork(6, 8, 2) : brain.mutate(0.1);
-          //   setBrain(nextBrain);
-          //   generations++;
-          // } else {
-          //   generations++;
-          // }
-          aiScore.setScore(score);
-          playerScore.reset();
-        }}
+       <PongGame 
+        onMiss={setGeneration}
+        onPlayerScore={setScore}
         onMoveUp={() => outputSignal.setIsMovingUp(true)}
         onMoveDown={() => outputSignal.setIsMovingDown(true)}
-        // onMoveUp={() => {}}
-        // onMoveDown={() => {}}
-        brain={brain}
-        setBrain={setBrain}
-      />
+       />
     </div>
   )
 }
